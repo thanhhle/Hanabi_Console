@@ -29,8 +29,8 @@
         public static int availableHints = 8;
         public static int availableMistakes = 3;
 
-        public static Card[] playerCards = {null, null, null, null, null};
-        public static Card[] otherCards = {null, null, null, null, null};
+        public static Card[] playerCards = new Card[5];
+        public static Card[] otherCards = new Card[5];
 
         public static int[] board = {0, 0, 0, 0, 0};
 
