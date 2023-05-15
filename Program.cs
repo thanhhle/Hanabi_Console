@@ -218,6 +218,8 @@ namespace Hanabi
         {
             Card[] cards = GetCards(player).Item1;
             Card card = cards[cardIndex];
+            Console.Write(card.color + "(" + card.rank + ")\n\n");
+
             discardedDeck.Add(card);
             cards[cardIndex] = deck[0];
             cardLeft[deck[0].color]--;
@@ -239,12 +241,12 @@ namespace Hanabi
         {
             if (currentPlayer == Player.SELF)
             {
-                Console.WriteLine("PLAYER'S TURN");
+                Console.WriteLine("\nPLAYER'S TURN");
                 ProcessPlayerTurn();
             }
             else
             {
-                Console.WriteLine("AI'S TURN");
+                Console.WriteLine("\nAI'S TURN");
                 ProcessAITurn();
             }
 
@@ -291,10 +293,16 @@ namespace Hanabi
             output += "\nAvailable mistakes: " + availableMistakes;
             output += "\nCards left in deck: " + deck.Count;
 
+            output += "\n\n\n\n------------------------------\t\t AI'S KNOWN CARDS \t\t------------------------------\n";
+            foreach(Card card in otherKnownCards)
+            {
+                output += card + "\t\t";
+            }
+
             output += "\n\n\n\n------------------------------\t\t AI \t\t------------------------------\n";
             foreach(Card card in otherCards)
             {
-                output += card.color + "(" + card.rank + ")" + "\t\t";
+                output += card + "\t\t";
             }
 
             output += "\n\n\n\n\n------------------------------\t\t BOARD \t\t------------------------------\n";
@@ -306,13 +314,13 @@ namespace Hanabi
             output += "\n\n\n\n\n------------------------------\t\t PLAYER \t\t------------------------------\n";
             foreach(Card card in playerKnownCards)
             {
-                output += card.color + "(" + card.rank + ")" + "\t\t";
+                output += card + "\t\t";
             }
 
             output += "\n\n\n\n\nDISCARDED DECK\n";
             foreach(Card card in discardedDeck)
             {
-                output += card.color + "(" + card.rank + ")" + "\n";
+                output += card + "\n";
             }
 
             File.WriteAllText("Gameplay.txt", output);
@@ -448,12 +456,15 @@ namespace Hanabi
             for (int i = 0; i < otherKnownCards.Length; i++)
             {
                 Card knownCard = otherKnownCards[i];
-                int colorIndex = (int)knownCard.color;
-                if (knownCard.rank > 0 && colorIndex > 0 && knownCard.rank <= board[colorIndex])
+                if (knownCard.rank > 0 && knownCard.color != Color.UNKNOWN)
                 {
-                    Console.Write("\n----> AI discards ");
-                    Discard(currentPlayer, i);
-                    return;
+                    int colorIndex = (int)knownCard.color;
+                    if (knownCard.rank <= board[colorIndex])
+                    {
+                        Console.Write("\n----> AI discards ");
+                        Discard(currentPlayer, i);
+                        return;
+                    }
                 }
             }
 
@@ -473,6 +484,7 @@ namespace Hanabi
 
 
             Dictionary<Color, int> ordered = cardLeft.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+            Console.WriteLine(ordered);
             foreach (Color color in ordered.Keys)
             {
                 for (int i = 0; i < otherKnownCards.Length; i++)

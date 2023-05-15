@@ -17,17 +17,18 @@ namespace Hanabi
 
         public override string ToString()
         {
-            return "Color: " + color + "\t-\tRank: " + rank;
+            return this.color + "(" + this.rank + ")";
         }
 
         public override bool Equals(object? obj)
         {
-            return Equals(obj as Card);
+            Card? card = obj as Card;
+            return card != null && card.color == this.color && card.rank == this.rank;
         }
 
-        public bool Equals(Card? card)
+        public override int GetHashCode()
         {
-            return card != null && card.color == this.color && card.rank == this.rank;
+            return HashCode.Combine(this.color, this.rank);
         }
     }
 }
