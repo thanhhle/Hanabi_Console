@@ -12,12 +12,12 @@ namespace Hanabi
 
     public enum Color
     {
-        GREEN = 0, 
-        YELLOW = 1, 
-        WHITE = 2, 
-        BLUE = 3, 
-        RED = 4,
-        UNKNOWN = 5,
+        GREEN,
+        YELLOW,
+        WHITE,
+        BLUE,
+        RED,
+        UNKNOWN,
     }
 
     public enum Action
@@ -56,7 +56,9 @@ namespace Hanabi
 
         public static void Main(string[] args)
         {
+            // Ignore the UNKNOWN color
             ALL_COLORS = ALL_COLORS.Take(ALL_COLORS.Count() - 1).ToArray();
+            
             Console.WriteLine("---------- MAKE A DECK ----------");
             MakeDeck();
             // PrintDeck(Target.DECK);
@@ -70,14 +72,6 @@ namespace Hanabi
                 playerKnownCards[i] = new Card(Color.UNKNOWN, 0);
                 otherKnownCards[i] = new Card(Color.UNKNOWN, 0);
             }
-
-            /*
-            Console.WriteLine("\n---------- PLAYER'S CARDS ----------");
-            PrintCards(Player.SELF);
-
-            Console.WriteLine("\n---------- OTHER'S CARDS ----------");
-            PrintCards(Player.OTHER);
-            */
 
             UpdateTextFile();
 
@@ -293,13 +287,13 @@ namespace Hanabi
             output += "\nAvailable mistakes: " + availableMistakes;
             output += "\nCards left in deck: " + deck.Count;
 
-            output += "\n\n\n\n------------------------------\t\t AI'S KNOWN CARDS \t\t------------------------------\n";
+            output += "\n\n\n\n\n------------------------------\t\t AI'S KNOWN CARDS \t\t------------------------------\n";
             foreach(Card card in otherKnownCards)
             {
                 output += card + "\t\t";
             }
 
-            output += "\n\n\n\n------------------------------\t\t AI \t\t------------------------------\n";
+            output += "\n\n\n\n\n------------------------------\t\t AI \t\t------------------------------\n";
             foreach(Card card in otherCards)
             {
                 output += card + "\t\t";
