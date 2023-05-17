@@ -52,18 +52,17 @@ namespace Hanabi
         public static Color[] ALL_COLORS = (Color[])Enum.GetValues(typeof(Color));
         public static int[] COUNTS = { 3, 2, 2, 2, 1 };
 
-        public static Player currentPlayer = Player.SELF;
+        public static Player currentPlayer = (Player)new Random().Next(0, 2);
 
         public static void Main(string[] args)
         {
-            // Ignore the UNKNOWN color
+            // Filter out the UNKNOWN color
             ALL_COLORS = ALL_COLORS.Take(ALL_COLORS.Count() - 1).ToArray();
             
-            Console.WriteLine("---------- MAKE A DECK ----------");
             MakeDeck();
             // PrintDeck(Target.DECK);
 
-            Console.WriteLine("\n\n---------- DEAL CARDS TO EACH PLAYER ----------");
+            Console.WriteLine("\n\n---------- DEAL " + CARD_QUANTITY + " CARDS TO EACH PLAYER ----------");
             for(int i = 0; i < CARD_QUANTITY; i++)
             {
                 DealCard(Player.SELF);
@@ -105,6 +104,7 @@ namespace Hanabi
             }
 
             ShuffleDeck();
+            Console.WriteLine("---------- MAKE A DECK OF " + deck.Count + " CARDS ----------");
         }
 
 
@@ -138,51 +138,92 @@ namespace Hanabi
         }
 
 
-        private static List<int> HintColor(Player target, Color color)
+        private static List<int> HintColor(Color color)
         {
-            List<int> hint = new List<int>();
+            Player target = currentPlayer == Player.SELF ? Player.OTHER : Player.SELF;
+            List<int> indexes = new List<int>();
             Card[] cards = GetCards(target).Item1;
             Card[] knownCards = GetCards(target).Item2;
             for (int i = 0; i < cards.Length; i++)
             {
                 if (cards[i].color == color)
                 {
-                    hint.Add(i);
-                    int knownRank = knownCards[i] != null ? knownCards[i].rank : 0;
-                    knownCards[i] = new Card(color, knownRank);
+                    indexes.Add(i);
                 }
             }
 
-            availableHints--;
-            return hint;
+            return indexes;
         }
 
 
-        private static List<int> HintRank(Player target, int rank)
+        private static List<int> HintRank(int rank)
         {
-            List<int> hint = new List<int>();
+            Player target = currentPlayer == Player.SELF ? Player.OTHER : Player.SELF;
+            List<int> indexes = new List<int>();
             Card[] cards = GetCards(target).Item1;
             Card[] knownCards = GetCards(target).Item2;
             for (int i = 0; i < cards.Length; i++)
             {
                 if (cards[i].rank == rank)
                 {
-                    hint.Add(i);
-                    Color knownColor = knownCards[i] != null ? knownCards[i].color : Color.UNKNOWN;
-                    knownCards[i] = new Card(knownColor, rank);
+                    indexes.Add(i);
                 }
             }
 
-            availableHints--;
-            return hint;
+            return indexes;
         }
 
 
-        private static void Play(Player player, int cardIndex)
+        private static void GiveHint(Color color, List<int> indexes)
         {
-            Card[] cards = GetCards(player).Item1;
+            Player target = currentPlayer == Player.SELF ? Player.OTHER : Player.SELF;
+            Card[] knownCards = GetCards(target).Item2;
+
+            foreach (int i in indexes)
+            {
+                int knownRank = knownCards[i] != null ? knownCards[i].rank : 0;
+                knownCards[i] = new Card(color, knownRank);
+            }
+
+            availableHints--;
+
+            Hint hint = new Hint(Action.HINT_COLOR, color, indexes);
+            hints.Add(hint);
+            Console.WriteLine(hint);
+        }
+
+
+        private static void GiveHint(int rank, List<int> indexes)
+        {
+            Player target = currentPlayer == Player.SELF ? Player.OTHER : Player.SELF;
+            Card[] knownCards = GetCards(target).Item2;
+
+            foreach (int i in indexes)
+            {
+                Color knownColor = knownCards[i] != null ? knownCards[i].color : Color.UNKNOWN;
+                knownCards[i] = new Card(knownColor, rank);
+            }
+
+            availableHints--;
+
+            Hint hint = new Hint(Action.HINT_RANK, rank, indexes);
+            hints.Add(hint);
+            Console.WriteLine(hint);
+        }
+
+
+        private static void Play(int cardIndex)
+        {
+            Card[] cards = GetCards(currentPlayer).Item1;
             Card card = cards[cardIndex];
-            Console.Write(card.color + "(" + card.rank + ")\n\n");
+            if (currentPlayer == Player.SELF)
+            {
+                Console.WriteLine("\n----> Player plays " + card + "\n\n");
+            }
+            else
+            {
+                Console.WriteLine("\n----> AI plays " + card + "\n\n");
+            }
 
             int colorIndex = (int)card.color;
             if (card.rank == board[colorIndex] + 1)
@@ -192,6 +233,7 @@ namespace Hanabi
                 {
                     availableHints++;
                     UpdateGameStatus();
+                    Console.WriteLine("Full " + card.color + " firework was built!");
                 }
             }
             else
@@ -203,23 +245,30 @@ namespace Hanabi
             cardLeft[deck[0].color]--;
             deck.RemoveAt(0);
 
-            Card[] knownCards = GetCards(player).Item2;
+            Card[] knownCards = GetCards(currentPlayer).Item2;
             knownCards[cardIndex] = new Card(Color.UNKNOWN, 0);
         }
 
 
-        private static void Discard(Player player, int cardIndex)
+        private static void Discard(int cardIndex)
         {
-            Card[] cards = GetCards(player).Item1;
+            Card[] cards = GetCards(currentPlayer).Item1;
             Card card = cards[cardIndex];
-            Console.Write(card.color + "(" + card.rank + ")\n\n");
+            if (currentPlayer == Player.SELF)
+            {
+                Console.WriteLine("\n----> Player discards " + card + "\n\n");
+            }
+            else
+            {
+                Console.WriteLine("\n----> AI discards " + card + "\n\n");
+            }
 
             discardedDeck.Add(card);
             cards[cardIndex] = deck[0];
             cardLeft[deck[0].color]--;
             deck.RemoveAt(0);
 
-            Card[] knownCards = GetCards(player).Item2;
+            Card[] knownCards = GetCards(currentPlayer).Item2;
             knownCards[cardIndex] = new Card(Color.UNKNOWN, 0);
             availableHints++;
         }
@@ -323,58 +372,100 @@ namespace Hanabi
 
         private static void ProcessPlayerTurn()
         {
-            Console.WriteLine("Pick one action:\n1. Hint Color\n2. Hint Rank\n3. Play\n4. Discard");
-            int action = Convert.ToInt32(Console.ReadLine());
-
-            if (action == 1)
+            bool isValid = false;
+            int option = 0;
+            while(!isValid)
             {
-                Console.WriteLine("\nPick one color (1 - 5):");
-                int count = 1;
-                foreach (Color color in ALL_COLORS)
+                if (availableHints > 0)
                 {
-                    Console.WriteLine(count + ". " + color);
-                    count++;
+                    Console.WriteLine("Pick one option:\n1. Play\n2. Discard\n3. Hint Color\n4. Hint Rank");
+                    (option, isValid) = ProcessInput(Console.ReadLine(), 1, 4);
+                }
+                else
+                {
+                    Console.WriteLine("Pick one option:\n1. Play\n2. Discard");
+                    (option, isValid) = ProcessInput(Console.ReadLine(), 1, 2);
+                }
+            }
+            
+
+            if (option == 1)
+            {
+                isValid = false;
+                int index = 0;
+                while (!isValid)
+                {
+                    Console.WriteLine("\nEnter the card index (1 - 5) to be played");
+                    (index, isValid) = ProcessInput(Console.ReadLine(), 1, 5);
                 }
 
-                action = Convert.ToInt32(Console.ReadLine()) - 1;
-
-                List<int> indexes = HintColor(Player.OTHER, (Color)action);
-                Hint hint = new Hint(currentPlayer, Action.HINT_COLOR, action, indexes);
-                hints.Add(hint);
-                Console.WriteLine(hint);
+                Play(index - 1);
             }
 
-            else if (action == 2)
+            else if (option == 2)
             {
-                Console.WriteLine("\nPick one rank (1 - 5):");
-                action = Convert.ToInt32(Console.ReadLine());
+                isValid = false;
+                int index = 0;
+                while (!isValid)
+                {
+                    Console.WriteLine("\nEnter the card index (1 - 5) to be discarded");
+                    (index, isValid) = ProcessInput(Console.ReadLine(), 1, 5);
+                }
 
-                List<int> indexes = HintRank(Player.OTHER, action);
-                Hint hint = new Hint(currentPlayer, Action.HINT_RANK, action, indexes);
-                hints.Add(hint);
-                Console.WriteLine(hint);
+                Discard(index - 1);
             }
 
-            else if (action == 3)
+            else if (option == 3 && availableHints > 0)
             {
-                Console.WriteLine("\nEnter the card index (1 - 5) to be played");
-                action = Convert.ToInt32(Console.ReadLine()) - 1;
-                Console.Write("\n----> Player plays ");
-                Play(Player.SELF, action);
+                HashSet<Color> colors = getCardColors(otherCards);
+                isValid = false;
+                int index = 0;
+                while (!isValid)
+                {
+                    Console.WriteLine("\nPick one color (1 - " + colors.Count + ")");
+                    int count = 1;
+                    foreach (Color c in colors)
+                    {
+                        Console.WriteLine(count + ". " + c);
+                        count++;
+                    }
+ 
+                    (index, isValid) = ProcessInput(Console.ReadLine(), 1, colors.Count);
+                }
+
+                Color color = colors.ToList()[index - 1];
+                List<int> indexes = HintColor(color);
+                GiveHint(color, indexes);
             }
 
-            else if (action == 4)
+            else if (option == 4 && availableHints > 0)
             {
-                Console.WriteLine("\nEnter the card index to be discarded");
-                action = Convert.ToInt32(Console.ReadLine()) - 1;
-                Console.Write("\n----> Player discards ");
-                Discard(Player.SELF, action);
+                HashSet<int> ranks = getCardRanks(otherCards);
+                isValid = false;
+                int index = 0;
+                while (!isValid)
+                {
+                    Console.WriteLine("\nPick one rank (1 - " + ranks.Count + ")");
+                    int count = 1;
+                    foreach (int r in ranks)
+                    {
+                        Console.WriteLine(count + ". " + r);
+                        count++;
+                    }
+ 
+                    (index, isValid) = ProcessInput(Console.ReadLine(), 1, ranks.Count);
+                }
+
+                int rank = ranks.ToList()[index - 1];
+                List<int> indexes = HintRank(rank);
+                GiveHint(rank, indexes);
             }
         }
 
 
         private static void ProcessAITurn()
         {
+            // Play
             for (int i = 0; i < otherKnownCards.Length; i++)
             {
                 Card knownCard = otherKnownCards[i];
@@ -383,69 +474,79 @@ namespace Hanabi
                     int colorIndex = (int)otherCards[i].color;
                     if (knownCard.rank == board[colorIndex] + 1)
                     {
-                        Console.Write("\n----> AI plays ");
-                        Play(Player.OTHER, i);
+                        Play(i);
                         return;
                     }
                 }
             }
 
-            Card? card = null;
-            for (int i = 0; i < playerCards.Length; i++)
+            // Give hints
+            if (availableHints > 0)
             {
-                int colorIndex = (int)playerCards[i].color;
-                int rank = playerCards[i].rank;
-                if (playerCards[i].rank == board[colorIndex] + 1)
+                Card? card = null;
+                for (int i = 0; i < playerCards.Length; i++)
                 {
-                    card = playerCards[i];
-                    break;
+                    int colorIndex = (int)playerCards[i].color;
+                    int rank = playerCards[i].rank;
+                    if (playerCards[i].rank == board[colorIndex] + 1)
+                    {
+                        card = playerCards[i];
+                        break;
+                    }
                 }
-            }
 
-            if (card != null && availableHints > 0)
-            {
-                Hint? hint = null;
-                if (GetColorCount(card.color, playerCards) > GetRankCount(card.rank, playerCards))
+                if (card != null && availableHints > 0)
                 {
-                    List<int> indexes = HintColor(Player.SELF, card.color);
-                    if (playerKnownCards[indexes[0]].color == Color.UNKNOWN)
+                    Hint? hint = null;
+                    if (GetColorCount(card.color, playerCards) > GetRankCount(card.rank, playerCards))
                     {
-                        hint = new Hint(currentPlayer, Action.HINT_COLOR, (int)card.color, indexes);
-                    }
-                    else
-                    {
-                        indexes = HintRank(Player.SELF, card.rank);
-                        if (playerKnownCards[indexes[0]].rank == 0)
-                        {
-                            hint = new Hint(currentPlayer, Action.HINT_RANK, card.rank, indexes);
-                        }
-                    }
-                }
-                else
-                {
-                    List<int> indexes = HintRank(Player.SELF, card.rank);
-                    if (playerKnownCards[indexes[0]].rank == 0)
-                    {
-                        hint = new Hint(currentPlayer, Action.HINT_RANK, card.rank, indexes);
-                    }
-                    else
-                    {
-                        indexes = HintColor(Player.SELF, card.color);
+                        List<int> indexes = HintColor(card.color);
                         if (playerKnownCards[indexes[0]].color == Color.UNKNOWN)
                         {
-                            hint = new Hint(currentPlayer, Action.HINT_COLOR, (int)card.color, indexes);
+                            hint = new Hint(Action.HINT_COLOR, card.color, indexes);
+                        }
+                        else
+                        {
+                            indexes = HintRank(card.rank);
+                            if (playerKnownCards[indexes[0]].rank == 0)
+                            {
+                                hint = new Hint(Action.HINT_RANK, card.rank, indexes);
+                            }
                         }
                     }
-                }
+                    else
+                    {
+                        List<int> indexes = HintRank(card.rank);
+                        if (playerKnownCards[indexes[0]].rank == 0)
+                        {
+                            hint = new Hint(Action.HINT_RANK, card.rank, indexes);
+                        }
+                        else
+                        {
+                            indexes = HintColor(card.color);
+                            if (playerKnownCards[indexes[0]].color == Color.UNKNOWN)
+                            {
+                                hint = new Hint(Action.HINT_COLOR, card.color, indexes);
+                            }
+                        }
+                    }
 
-                if (hint != null)
-                {
-                    hints.Add(hint);
-                    Console.WriteLine(hint);
-                    return;
+                    if (hint != null)
+                    {
+                        if (hint.action == Action.HINT_COLOR)
+                        {
+                            GiveHint(hint.color, hint.indexes);
+                        }
+                        else
+                        {
+                            GiveHint(hint.rank, hint.indexes);
+                        }
+
+                        return;
+                    }
                 }
             }
-
+            
             // Discard a card
             for (int i = 0; i < otherKnownCards.Length; i++)
             {
@@ -455,8 +556,7 @@ namespace Hanabi
                     int colorIndex = (int)knownCard.color;
                     if (knownCard.rank <= board[colorIndex])
                     {
-                        Console.Write("\n----> AI discards ");
-                        Discard(currentPlayer, i);
+                        Discard(i);
                         return;
                     }
                 }
@@ -469,16 +569,13 @@ namespace Hanabi
                 {
                     if (knownCard == playerCard)
                     {
-                        Console.Write("\n----> AI discards ");
-                        Discard(currentPlayer, i);
+                        Discard(i);
                         return;
                     }
                 }
             }
 
-
             Dictionary<Color, int> ordered = cardLeft.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-            Console.WriteLine(ordered);
             foreach (Color color in ordered.Keys)
             {
                 for (int i = 0; i < otherKnownCards.Length; i++)
@@ -486,12 +583,14 @@ namespace Hanabi
                     Card knownCard = otherKnownCards[i];
                     if (knownCard.color == color)
                     {
-                        Console.Write("\n----> AI discards ");
-                        Discard(currentPlayer, i);
+                        Discard(i);
                         return;
                     }
                 }
             }
+
+            int randIndex = new Random().Next(0, ordered.Count);
+            Discard(randIndex);
         }
 
 
@@ -538,6 +637,52 @@ namespace Hanabi
 
             winGame = count == 5 ? true : false;
         }
-    }
 
+
+        private static HashSet<Color> getCardColors(Card[] cards)
+        {
+            HashSet<Color> colors = new HashSet<Color>();
+            foreach(Card card in cards)
+            {
+                colors.Add(card.color);
+            }
+
+            return colors;
+        }
+
+
+        private static HashSet<int> getCardRanks(Card[] cards)
+        {
+            HashSet<int> ranks = new HashSet<int>();
+            foreach(Card card in cards)
+            {
+                ranks.Add(card.rank);
+            }
+
+            return ranks;
+        }
+
+
+        private static (int, bool) ProcessInput(string? input, int min, int max)
+        {
+            bool isValid = false;
+            bool isNumeric = !string.IsNullOrEmpty(input) && input.All(Char.IsDigit);
+            int inputInt = 0;
+            if (isNumeric)
+            {
+                inputInt = Convert.ToInt32(input);
+                if (inputInt >= min && inputInt <= max)
+                {
+                    isValid = true;
+                }
+            }
+
+            if (!isValid)
+            {
+                Console.WriteLine("\n!!! Invalid option. Please pick again !!!\n");
+            }
+
+            return (inputInt, isValid);
+        }
+    }
 }

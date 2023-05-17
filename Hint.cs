@@ -2,23 +2,32 @@ namespace Hanabi
 {
     public class Hint
     {
-        public Player player;
         public Action action;
-        public int colorRank;
+        public Color color;
+        public int rank;
         public List<int> indexes;
 
-        public Hint(Player player, Action action, int colorRank, List<int> indexes)
+
+        public Hint(Action action, Color color, List<int> indexes)
         {
-            this.player = player;
             this.action = action;
-            this.colorRank = colorRank;
+            this.color = color;
             this.indexes = indexes;
         }
+
+
+        public Hint(Action action, int rank, List<int> indexes)
+        {
+            this.action = action;
+            this.rank = rank;
+            this.indexes = indexes;
+        }
+
 
         public override string ToString()
         {
             string output = "\n----> ";
-            if (this.player == Player.SELF)
+            if (Program.currentPlayer == Player.SELF)
             {
                 output += "Player hints AI about all their ";
             }
@@ -29,11 +38,11 @@ namespace Hanabi
 
             if (this.action == Action.HINT_COLOR)
             {
-                output += (Color)colorRank + " cards: ";
+                output += color + " cards: ";
             }
             else
             {
-                output += colorRank + " cards: ";
+                output += rank + " cards: ";
             }
 
             foreach (int index in indexes)
