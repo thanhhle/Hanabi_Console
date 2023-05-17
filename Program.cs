@@ -79,6 +79,15 @@ namespace Hanabi
             {
                 RunGame();
             }
+
+            if (winGame)
+            {
+                Console.WriteLine("Congratulations. You won!");
+            }
+            else
+            {
+                Console.WriteLine("Game ends. You lose!");
+            }
         }
 
 
